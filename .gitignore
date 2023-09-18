@@ -1,0 +1,10 @@
+temp/
+.idea/
+
+
+# Ignore pytest cache folders
+__pycache__/
+
+# Ignore pytest cache files
+*.pyc
+*.pyo
