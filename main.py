@@ -28,7 +28,7 @@ if __name__ == "__main__":
     logger.info(f"Bot name: {bot_name}")
 
     # Create a SpeechToText object
-    keyword_entries = [(bot_name, 0.9)]
+    keyword_entries = [(bot_name, 0.95)]
     speech_to_text = SpeechToText(device_index=listening_device.device_index, keyword_entries=keyword_entries)
     speech_to_text.start()
     logger.info("Listening for audio")
@@ -63,6 +63,12 @@ if __name__ == "__main__":
                 conversation_uuid = str(uuid4())
                 logger.info(f"New conversation: {conversation_uuid}")
 
+            if any(keyword in transcribed_message for keyword in ["bye", "goodbye", "quit", "exit", "end", "stop"]):
+                conversation_uuid = None
+                logger.info(f"Ending conversation due to goodbye: {conversation_uuid}")
+                text_to_speech.speak_on_device("Goodbye", speaking_device)
+                continue
+
             if conversation_uuid is None:
                 continue
 
@@ -78,14 +84,15 @@ if __name__ == "__main__":
                 conversation_uuid = None
                 logger.info(f"Ending conversation due to ENDING: {conversation_uuid}")
                 text_to_speech.speak_on_device("Ended conversation", speaking_device)
-
-            if "CONFUSED" in openai_response:
+            elif "CONFUSED" in openai_response:
                 consecutive_confused_responses += 1
                 if consecutive_confused_responses > 3:
                     conversation_uuid = None
                     consecutive_confused_responses = 0
                     logger.info(f"Ending conversation due to consecutive CONFUSED responses: {conversation_uuid}")
                     text_to_speech.speak_on_device("Ended conversation", speaking_device)
+            elif "NORMAL" in openai_response:
+                openai_response.replace("NORMAL", "")
 
         time.sleep(0.001)
 
