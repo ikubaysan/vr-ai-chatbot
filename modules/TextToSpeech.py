@@ -1,8 +1,10 @@
 from typing import Optional, List
 import pyttsx3
 import pyaudio
-import PyAudioWrapper
-import AudioDevice
+from modules.AudioDevice import AudioDevice
+from modules.PyAudioWrapper import PyAudioWrapper
+from modules.helpers.logging_helper import logger
+import os
 import wave
 
 
@@ -96,7 +98,12 @@ class TextToSpeech:
             audio_device (AudioDevice): The audio device to use for speech synthesis.
         """
         # First save the synthesized speech to a temporary .wav file
-        filepath = "./temp/speak_on_device_temp_speech.wav"
+        # Create the temp folder if it doesn't exist
+        temp_folder = "./temp"
+        if not os.path.exists(temp_folder):
+            os.mkdir(temp_folder)
+
+        filepath = os.path.join(temp_folder, "speak_on_device_temp_speech.wav")
         self.speak_to_file(text, filepath)
 
         # Now play the saved audio file using pyaudio
@@ -125,3 +132,15 @@ class TextToSpeech:
 
         # Close PyAudio
         p.terminate()
+
+if __name__ == "__main__":
+    py_audio_wrapper = PyAudioWrapper()
+    audio_devices = py_audio_wrapper.get_audio_devices()
+
+    # Speak into the game (Cable A)
+    audio_device = audio_devices.get_input_device_by_name("cable-a")
+
+    text_to_speech = TextToSpeech()
+    text_to_speech.speak_on_device("Hello, this is a test from my cable-a speaker.", audio_device)
+
+

@@ -1,7 +1,6 @@
 import pytest
-import PyAudioWrapper
-import TextToSpeech
-import SpeechToText
+from modules import SpeechToText, PyAudioWrapper, TextToSpeech
+
 
 @pytest.fixture
 def py_audio_wrapper():

@@ -1,7 +1,6 @@
 temp/
 .idea/
 
-
 # Ignore pytest cache folders
 __pycache__/
 
@@ -10,3 +9,6 @@ __pycache__/
 *.pyo
 
 **/temp/
+
+
+config.ini

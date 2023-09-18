@@ -1,6 +1,4 @@
-import pytest
-import TextToSpeech
-import SpeechToText
+from modules import SpeechToText, TextToSpeech
 import os
 
 def create_temp_folder() -> str:
