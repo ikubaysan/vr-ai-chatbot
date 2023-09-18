@@ -1,5 +1,9 @@
 from typing import Optional, List
 import pyttsx3
+import pyaudio
+import PyAudioWrapper
+import AudioDevice
+import wave
 
 
 class TextToSpeech:
@@ -82,3 +86,42 @@ class TextToSpeech:
         """
         self.engine.save_to_file(text, filepath)
         self.engine.runAndWait()
+
+    def speak_on_device(self, text: str, audio_device: AudioDevice):
+        """
+        Synthesize and speak the given text using a specific audio device.
+
+        Args:
+            text (str): The text to be spoken.
+            audio_device (AudioDevice): The audio device to use for speech synthesis.
+        """
+        # First save the synthesized speech to a temporary .wav file
+        filepath = "./temp/speak_on_device_temp_speech.wav"
+        self.speak_to_file(text, filepath)
+
+        # Now play the saved audio file using pyaudio
+        p = pyaudio.PyAudio()
+
+        # Read the .wav file
+        wf = wave.open(filepath, 'rb')
+
+        # Open a PyAudio stream
+        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+                        channels=wf.getnchannels(),
+                        rate=wf.getframerate(),
+                        output=True,
+                        output_device_index=audio_device.device_index)
+
+        # Read data chunk and play
+        chunk = 1024
+        data = wf.readframes(chunk)
+        while len(data) > 0:
+            stream.write(data)
+            data = wf.readframes(chunk)
+
+        # Stop stream
+        stream.stop_stream()
+        stream.close()
+
+        # Close PyAudio
+        p.terminate()

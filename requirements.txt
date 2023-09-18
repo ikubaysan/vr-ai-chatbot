@@ -2,3 +2,5 @@ SpeechRecognition
 pocketsphinx
 pyttsx3
 pytest
+pyaudio
+wheel
