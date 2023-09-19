@@ -7,6 +7,7 @@ class ActionEnum(Enum):
     MOVE_RIGHT = "move_right"
     SHAKE_HEAD = "shake_head"
     NOD_HEAD = "nod_head"
+    NOD_HEAD_TWICE = "nod_head_twice"
     TURN_AROUND = "turn_around"
     TURN_LEFT = "turn_left"
     TURN_RIGHT = "turn_right"

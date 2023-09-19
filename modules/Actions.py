@@ -206,6 +206,10 @@ class Actions:
         self.move_mouse_down(distance=500, duration=0.1)
         self.move_mouse_up(distance=250, duration=0.05)
 
+    def nod_head_twice(self):
+        self.nod_head()
+        self.nod_head()
+
     def shake_head(self):
         self.move_mouse_left(distance=250, duration=0.05)
         self.move_mouse_right(distance=500, duration=0.1)
