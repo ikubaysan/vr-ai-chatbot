@@ -32,7 +32,7 @@ def test_APIClient_send_prompt_english_2(api_client: APIClient):
     return
 
 def test_APIClient_send_prompt_english_quit(api_client: APIClient):
-    response1 = api_client.send_prompt(prompt="or the and", conversation_id="test")
+    response1 = api_client.send_prompt(prompt="taewimotw erastyumwftum", conversation_id="test")
     response2 = api_client.send_prompt(prompt="whats your name", conversation_id="test")
     response3 = api_client.send_prompt(prompt="does nine plus nine equal 16", conversation_id="test")
     response4 = api_client.send_prompt(prompt="does ten plus ten equal 20", conversation_id="test")

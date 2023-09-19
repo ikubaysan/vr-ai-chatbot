@@ -100,10 +100,11 @@ class APIClient:
             for message in previous_messages:
                 messages.append(message)
             # Finally, add the new prompt
-            if self.forced_system_message is not None:
-                prompt = self.forced_system_message + prompt
-
-            messages.append({"role": "user", "content": prompt})
+            if self.forced_system_message is None:
+                prompt_to_send = prompt
+            else:
+                prompt_to_send = self.forced_system_message + prompt
+            messages.append({"role": "user", "content": prompt_to_send})
 
         body = {
             "model": self.model,
@@ -116,7 +117,18 @@ class APIClient:
 
         response = self.post(body=body, headers=headers, path=self.path)
         logger.info(f"Got response: {response}")
-        response_json = json.loads(response)
+
+        max_retries = 5
+        for retries in range(max_retries):
+            response_json = json.loads(response)
+            if "error" in response_json:
+                if retries == max_retries - 1:
+                    raise Exception(response_json["error"])
+                logger.error(f"Got error response: {response_json['error']}. Retrying in 10 seconds...")
+                time.sleep(10)
+            else:
+                break
+
         text = response_json["choices"][0]["message"]["content"].strip()
 
         if conversation is not None:
