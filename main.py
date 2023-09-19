@@ -55,11 +55,12 @@ if __name__ == "__main__":
     #conversation_uuid = str(uuid4())
 
     while True:
+        # Check if the transcription queue has any messages
         if speech_to_text.transcription:
             transcribed_message = speech_to_text.transcription.pop(0)
             logger.info(f"Transcribed message: {transcribed_message}")
 
-            if "ringo" in transcribed_message:
+            if "ringo" in transcribed_message.lower():
                 conversation_uuid = str(uuid4())
                 logger.info(f"New conversation: {conversation_uuid}")
 

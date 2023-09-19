@@ -4,17 +4,35 @@ import threading
 from typing import Optional, Tuple
 from modules.PyAudioWrapper import PyAudioWrapper
 from modules.helpers.logging_helper import logger
+import json
 
 
 class SpeechToText:
-    def __init__(self, device_index: Optional[int] = None, keyword_entries: Optional[list[Tuple]] = None):
+    def __init__(self, device_index: Optional[int] = None,
+                 keyword_entries: Optional[list[Tuple]] = None,
+                 credentials_json_file_path: Optional[str] = None):
         self.recognizer = sr.Recognizer()
         self.buffer = []  # To hold audio data
         self.transcription = []  # To hold transcribed text
         self.stop_capture = False  # Flag to control the capturing thread
         self.device_index = device_index  # Microphone device index
         self.keyword_entries = keyword_entries  # Keyword entries for keyword spotting
+        self.engine = "sphinx"  # Default speech recognition engine
+        self.credentials_json_file_path = credentials_json_file_path  # Google Cloud credentials JSON file
 
+    def set_engine(self, engine: str):
+        """
+        Set the speech recognition engine.
+
+        Args:
+            engine (str): The speech recognition engine to use.
+        """
+        if engine == "sphinx":
+            self.engine = "sphinx"
+        elif engine == "google":
+            self.engine = "google"
+        else:
+            raise ValueError(f"Speech recognition engine '{engine}' not supported.")
 
     def start_capture(self):
         """
@@ -30,7 +48,12 @@ class SpeechToText:
     def _transcribe_from_audio_data(self, audio_data) -> str:
         try:
             # Directly use the AudioData object for recognition
-            text = self.recognizer.recognize_sphinx(audio_data)
+            if self.engine == "google":
+                text = self.recognizer.recognize_google_cloud(audio_data=audio_data, credentials_json=self.credentials_json_file_path)
+            elif self.engine == "sphinx":
+                text = self.recognizer.recognize_sphinx(audio_data=audio_data, keyword_entries=self.keyword_entries)
+            else:
+                raise ValueError(f"Speech recognition engine '{self.engine}' not supported.")
             return text
         except sr.UnknownValueError:
             return "Speech Recognition could not understand audio"
@@ -41,7 +64,12 @@ class SpeechToText:
         try:
             with audio_source as source:
                 audio = self.recognizer.listen(source)
-            text = self.recognizer.recognize_sphinx(audio, keyword_entries=self.keyword_entries)
+            if self.engine == "google":
+                text = self.recognizer.recognize_google_cloud(audio_data=audio, credentials_json=self.credentials_json_file_path)
+            elif self.engine == "sphinx":
+                text = self.recognizer.recognize_sphinx(audio_data=audio, keyword_entries=self.keyword_entries)
+            else:
+                raise ValueError(f"Speech recognition engine '{self.engine}' not supported.")
             return text
         except sr.UnknownValueError:
             return "Speech Recognition could not understand audio"
