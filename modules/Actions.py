@@ -53,13 +53,26 @@ class Actions:
         if not window_title:
             raise ValueError("A window title is required.")
         self.window_title = window_title
+        self.window_is_focused = self.is_window_focused(self.window_title)
         self.action_queue = deque()
         self.thread = None
+        self.window_focus_thread = None
+        self.stop_flag = False
 
     def start(self):
         if self.thread is None:
             self.thread = threading.Thread(target=self._execute_actions)
             self.thread.start()
+            logger.info(f"Started Actions thread")
+        if self.window_focus_thread is None:
+            self.window_focus_thread = threading.Thread(target=self._check_window_focus)
+            self.window_focus_thread.start()
+            logger.info(f"Started window focus thread")
+
+    def _check_window_focus(self):
+        while True:
+            self.window_is_focused = self.is_window_focused(self.window_title)
+            time.sleep(0.01)
 
     def enqueue_action(self, action: ActionEnum):
         self.action_queue.append(action)
@@ -67,25 +80,28 @@ class Actions:
 
     def _execute_actions(self):
         while True:
-            is_focused = self.is_window_focused(self.window_title)
-            if not is_focused:
-                self.action_queue.clear()
-            else:
-                while self.action_queue and is_focused:
+            if self.window_is_focused:
+                while self.action_queue and self.window_is_focused:
+                    if self.stop_flag:
+                        logger.info(f"Stop flag set, clearing action queue")
+                        self.action_queue.clear()
+                        self.stop_flag = False
+                        break
                     action = self.action_queue.popleft()
                     getattr(self, action.value)()
                     logger.info(f"Executed action: {action.value}")
-
-                    # Re-check focus status before looping again
-                    is_focused = self.is_window_focused(self.window_title)
-            time.sleep(1)
+            else:
+                self.action_queue.clear()
+                self.stop_flag = False
+            time.sleep(0.001)
 
     @staticmethod
     def is_window_focused(title: str):
         """Check if a window with the title is currently focused."""
         try:
             active_window = gw.getActiveWindow()
-            return title.lower() in active_window.title.lower()
+            #return title.lower() in active_window.title.lower()
+            return title.lower() == active_window.title.lower()
         except Exception as e:
             print(f"An error occurred in is_window_focused(): {e}")
             return False
@@ -105,24 +121,21 @@ class Actions:
         ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
 
     def move_forward(self, duration: float = 0.5):
-        self.press_key(W)
-        time.sleep(duration)
-        self.release_key(W)
+        self.press_and_release_key(W, duration)
 
     def move_back(self, duration: float = 0.5):
-        self.press_key(S)
-        time.sleep(duration)
-        self.release_key(S)
+        self.press_and_release_key(S, duration)
 
     def move_left(self, duration: float = 0.5):
-        self.press_key(A)
-        time.sleep(duration)
-        self.release_key(A)
+        self.press_and_release_key(A, duration)
 
     def move_right(self, duration: float = 0.5):
-        self.press_key(D)
+        self.press_and_release_key(D, duration)
+
+    def press_and_release_key(self, hex_key_code, duration: float = 0.5):
+        self.press_key(hex_key_code)
         time.sleep(duration)
-        self.release_key(D)
+        self.release_key(hex_key_code)
 
     def move_mouse(self, direction, distance: int = 50, duration: float = 1):
         """
@@ -149,14 +162,28 @@ class Actions:
             raise ValueError("Invalid direction. Must be 'left', 'right', 'up', or 'down'.")
 
         for _ in range(distance):
+            if self.stop_flag:
+                logger.info(f"Stop flag set, so early exiting move_mouse()")
+                return
+            elif not self.window_is_focused:
+                logger.info(f"Window is no longer focused, so early exiting move_mouse()")
+                return
             ctypes.windll.user32.mouse_event(0x0001, step_x, step_y, 0, 0)
             time.sleep(step_delay)
 
-    def move_mouse_left(self, distance: int = 50, duration: float = 1):
-        self.move_mouse('left', distance, duration)
+    def move_mouse_left(self, distance: int = 50, duration: float = 1, do_until_stop_flag: bool = False):
+        if do_until_stop_flag:
+            while self.stop_flag is False and self.window_is_focused:
+                self.move_mouse('left', distance, duration)
+        else:
+            self.move_mouse('left', distance, duration)
 
-    def move_mouse_right(self, distance: int = 50, duration: float = 1):
-        self.move_mouse('right', distance, duration)
+    def move_mouse_right(self, distance: int = 50, duration: float = 1, do_until_stop_flag: bool = False):
+        if do_until_stop_flag:
+            while self.stop_flag is False and self.window_is_focused:
+                self.move_mouse('right', distance, duration)
+        else:
+            self.move_mouse('right', distance, duration)
 
     def move_mouse_up(self, distance: int = 50, duration: float = 1):
         self.move_mouse('up', distance, duration)
@@ -174,22 +201,37 @@ class Actions:
         self.move_mouse_right(distance=500, duration=0.1)
         self.move_mouse_left(distance=250, duration=0.05)
 
-    def turn_around(self):
-        self.move_mouse_right(distance=960, duration=5)
+    def turn_right(self):
+        self.move_mouse_right(distance=500, duration=5)
+
+    def turn_left(self):
+        self.move_mouse_left(distance=500, duration=5)
+
+    def turn_right_until_stop_flag(self):
+        self.move_mouse_right(do_until_stop_flag=True)
+
+    def turn_left_until_stop_flag(self):
+        self.move_mouse_left(do_until_stop_flag=True)
 
 
 if __name__ == "__main__":
-    actions = Actions(window_title="NeosVR")
+    #actions = Actions(window_title="NeosVR")
+    actions = Actions(window_title="VRChat")
     actions.start()
 
     while True:
-        if actions.is_window_focused(actions.window_title):
-            print("Neos is focused")
+        if actions.window_is_focused:
+            print("Game is focused")
             #actions.enqueue_action(ActionEnum.TURN_AROUND)
-            actions.enqueue_action(ActionEnum.NOD_HEAD)
-            actions.enqueue_action(ActionEnum.NOD_HEAD)
+            # actions.enqueue_action(ActionEnum.NOD_HEAD)
+            # actions.enqueue_action(ActionEnum.NOD_HEAD)
             time.sleep(2)
-            actions.enqueue_action(ActionEnum.SHAKE_HEAD)
-            actions.enqueue_action(ActionEnum.SHAKE_HEAD)
+            # actions.enqueue_action(ActionEnum.SHAKE_HEAD)
+            # actions.enqueue_action(ActionEnum.SHAKE_HEAD)
+
+            #actions.enqueue_action(ActionEnum.TURN_LEFT)
+            #actions.enqueue_action(ActionEnum.TURN_RIGHT)
+
+            actions.enqueue_action(ActionEnum.TURN_RIGHT_UNTIL_STOP_FLAG)
 
         time.sleep(3)
