@@ -91,54 +91,55 @@ class Actions:
         time.sleep(0.5)
         self.release_key(D)
 
-    def move_mouse(self, direction, distance: int=50, speed: float=1):
+    def move_mouse(self, direction, distance: int = 50, speed: float = 1):
         """
-        :param direction:
-        :param distance:
-        :param speed: A float between 0 (exclusive) and 1 (inclusive). 1 Means instant movement.
-        :return:
-        Move the mouse in a direction ('left', 'right') by a certain distance at a given speed.
+        :param direction: The direction to move the mouse ('left', 'right', 'up', 'down')
+        :param distance: The distance to move the mouse.
+        :param speed: A float between 0 (exclusive) and 1 (inclusive). 1 means instant movement.
+        :return: None
         """
-
-        # Validate the speed value
         if speed <= 0 or speed > 1:
             raise ValueError("Invalid speed value. Must be between 0 and 1 (exclusive).")
 
-        # Calculate the delay based on the speed
         delay = 1 - speed
+        step_x, step_y = 0, 0
 
         if direction == 'left':
-            step = -1  # Each segment moves left by 5 pixels
+            step_x = -1
+        elif direction == 'right':
+            step_x = 1
+        elif direction == 'up':
+            step_y = -1
+        elif direction == 'down':
+            step_y = 1
         else:
-            step = 1  # Each segment moves right by 5 pixels
+            raise ValueError("Invalid direction. Must be 'left', 'right', 'up', or 'down'.")
 
         for _ in range(distance):
-            ctypes.windll.user32.mouse_event(0x0001, step, 0, 0, 0)
-            time.sleep(delay / distance)  # Wait for the calculated amount of time between each segment
+            ctypes.windll.user32.mouse_event(0x0001, step_x, step_y, 0, 0)
+            time.sleep(delay / distance)
 
+    def move_mouse_left(self, distance: int = 50, speed: float = 1):
+        self.move_mouse('left', distance, speed)
+
+    def move_mouse_right(self, distance: int = 50, speed: float = 1):
+        self.move_mouse('right', distance, speed)
+
+    def move_mouse_up(self, distance: int = 50, speed: float = 1):
+        self.move_mouse('up', distance, speed)
+
+    def move_mouse_down(self, distance: int = 50, speed: float = 1):
+        self.move_mouse('down', distance, speed)
+
+    def nod(self):
+        actions.move_mouse_up(distance=250, speed=0.999)
+        actions.move_mouse_down(distance=250, speed=0.999)
 
 if __name__ == "__main__":
     actions = Actions(window_title_substring="NeosVR")
     while True:
         if actions.is_window_focused(actions.window_title_substring):
             print("Neos is focused")
-            actions.turn_left()
-            time.sleep(1)
-            actions.turn_right()
-            time.sleep(1)
-            actions.move_forward()
-            time.sleep(1)
-            actions.move_back()
-            time.sleep(1)
-            actions.move_mouse('left', distance=300, speed=1)
-            time.sleep(1)
-            actions.move_mouse('right', distance=300, speed=1)
-            time.sleep(1)
-            actions.move_mouse('left', distance=300, speed=0.5)
-            time.sleep(1)
-            actions.move_mouse('right', distance=300, speed=0.5)
-            time.sleep(1)
-            actions.move_mouse('left', distance=300, speed=0.25)
-            time.sleep(1)
-            actions.move_mouse('right', distance=300, speed=0.25)
+            actions.nod()
+
         time.sleep(1)
