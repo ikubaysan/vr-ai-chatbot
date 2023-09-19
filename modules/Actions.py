@@ -259,10 +259,10 @@ class Actions:
         self.move_mouse_left(do_until_stop_flag=True)
 
     def move_forward_until_stop_flag(self):
-        self.move_forward(duration=0.5, do_until_stop_flag=True)
+        self.move_forward(duration=0.25, do_until_stop_flag=True)
 
     def move_back_until_stop_flag(self):
-        self.move_back(duration=0.5, do_until_stop_flag=True)
+        self.move_back(duration=0.25, do_until_stop_flag=True)
 
     def turn_right_randomly(self):
         self.move_mouse_right(distance=random.randint(100, 1000), duration=random.uniform(0.1, 0.5))

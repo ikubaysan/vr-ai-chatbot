@@ -1,4 +1,5 @@
 import time
+import random
 from modules.helpers.logging_helper import logger
 from modules.SpeechToText import SpeechToText
 from modules.TextToSpeech import TextToSpeech
@@ -77,14 +78,14 @@ if __name__ == "__main__":
                 logger.info(f"More accurate transcription using Google Cloud: {transcribed_message}")
 
             end_keywords = ["bye", "quit", "exit"]
-            transcribed_message_words = transcribed_message.split()
-            if character.state.is_conversing and any(end_keyword in transcribed_message_words for end_keyword in end_keywords):
+            #transcribed_message_words = transcribed_message.split()
+            if character.state.is_conversing and any(end_keyword in transcribed_message for end_keyword in end_keywords):
                 logger.info(f"Ending conversation due to goodbye.")
                 character.end_conversation()
                 continue
 
             stop_action_keywords = ["stop", "wait", "hold", "pause"]
-            if character.state.is_performing_action and any(stop_action_keyword in transcribed_message_words for stop_action_keyword in stop_action_keywords):
+            if character.state.is_performing_action and any(stop_action_keyword in transcribed_message for stop_action_keyword in stop_action_keywords):
                 logger.info(f"Stopping action due to stop keyword.")
                 character.actions.stop_flag = True
                 logger.info("Set stop flag to True")
@@ -103,17 +104,21 @@ if __name__ == "__main__":
 
             logger.info(f"OpenAI response: {openai_response}")
 
+            conversation_end_needed = False
+
             if openai_response.startswith("TYPE_NORMAL"):
                 # Remove the TYPE_NORMAL prefix
                 openai_response = openai_response.replace("TYPE_NORMAL", "")
                 character.consecutive_confused_responses = 0
             elif openai_response.startswith("TYPE_ENDING"):
                 openai_response = openai_response.replace("TYPE_ENDING", "")
+                conversation_end_needed = True
                 logger.info(f"Ending conversation due to TYPE_ENDING: {character.conversation_uuid}")
             elif openai_response.startswith("TYPE_CONFUSED"):
                 openai_response = openai_response.replace("TYPE_CONFUSED", "")
                 character.consecutive_confused_responses += 1
                 if character.consecutive_confused_responses > 3:
+                    conversation_end_needed = True
                     logger.info(f"Ending conversation due to consecutive TYPE_CONFUSED responses: {character.conversation_uuid}")
             elif openai_response.startswith("TYPE_YES"):
                 openai_response = openai_response.replace("TYPE_YES", "")
@@ -127,7 +132,7 @@ if __name__ == "__main__":
                 elif openai_response.startswith("TYPE_CMD_TURN"):
                     openai_response = openai_response.replace("TYPE_CMD_TURN", "")
                     left_turn_keywords = ["left", "counter"]
-                    if any(left_turn_keyword in transcribed_message_words for left_turn_keyword in left_turn_keywords):
+                    if any(left_turn_keyword in transcribed_message for left_turn_keyword in left_turn_keywords):
                         character.actions.enqueue_action(ActionEnum.TURN_LEFT_UNTIL_STOP_FLAG)
                     else:
                         character.actions.enqueue_action(ActionEnum.TURN_RIGHT_UNTIL_STOP_FLAG)
@@ -143,12 +148,14 @@ if __name__ == "__main__":
 
             text_to_speech.speak_on_device(openai_response, speaking_device)
 
-            if "TYPE_ENDING" in openai_response or character.consecutive_confused_responses > 3:
+            if conversation_end_needed:
                 logger.info(f"Ending conversation: {character.conversation_uuid}")
                 character.end_conversation()
 
-        if character.state.is_wandering and not character.actions.action_is_ongoing():
+        if character.state.is_wandering and character.actions.window_is_focused and not character.actions.action_is_ongoing:
             character.actions.enqueue_random_action()
+            time.sleep(random.uniform(1, 10))
+
         time.sleep(0.001)
 
     pass
