@@ -120,11 +120,21 @@ class Actions:
         x = Input(ctypes.c_ulong(1), ii_)
         ctypes.windll.user32.SendInput(1, ctypes.pointer(x), ctypes.sizeof(x))
 
-    def move_forward(self, duration: float = 0.5):
-        self.press_and_release_key(W, duration)
+    def move_forward(self, duration: float = 0.5, do_until_stop_flag: bool = False):
+        if do_until_stop_flag:
+            while self.stop_flag is False and self.window_is_focused:
+                self.press_and_release_key(W, duration)
+                time.sleep(0.5)
+        else:
+            self.press_and_release_key(W, duration)
 
-    def move_back(self, duration: float = 0.5):
-        self.press_and_release_key(S, duration)
+    def move_back(self, duration: float = 0.5, do_until_stop_flag: bool = False):
+        if do_until_stop_flag:
+            while self.stop_flag is False and self.window_is_focused:
+                self.press_and_release_key(S, duration)
+                time.sleep(0.5)
+        else:
+            self.press_and_release_key(S, duration)
 
     def move_left(self, duration: float = 0.5):
         self.press_and_release_key(A, duration)
@@ -212,6 +222,12 @@ class Actions:
 
     def turn_left_until_stop_flag(self):
         self.move_mouse_left(do_until_stop_flag=True)
+
+    def move_forward_until_stop_flag(self):
+        self.move_forward(duration=1, do_until_stop_flag=True)
+
+    def move_back_until_stop_flag(self):
+        self.move_back(duration=1, do_until_stop_flag=True)
 
 
 if __name__ == "__main__":

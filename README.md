@@ -1,7 +1,5 @@
 # vr-ai-chatbot
 
-Install Voicemeeter Audio Mixer:
-https://vb-audio.com/Voicemeeter/
+Install VB-CABLE A+B from here:
+https://vb-audio.com/Cable/index.htm
 
-You will need to reboot after installing.
-Voicemeter will create a "VoiceMeeter Input" and a "VoiceMeeter Output" audio device.
