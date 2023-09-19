@@ -19,6 +19,7 @@ class SpeechToText:
         self.keyword_entries = keyword_entries  # Keyword entries for keyword spotting
         self.engine = "sphinx"  # Default speech recognition engine
         self.credentials_json_file_path = credentials_json_file_path  # Google Cloud credentials JSON file
+        self.latest_audio_chunk = None
 
     def set_engine(self, engine: str):
         """
@@ -33,6 +34,7 @@ class SpeechToText:
             self.engine = "google"
         else:
             raise ValueError(f"Speech recognition engine '{engine}' not supported.")
+        logger.info(f"Speech recognition engine set to '{self.engine}'")
 
     def start_capture(self):
         """
@@ -90,6 +92,7 @@ class SpeechToText:
                     self.transcription.append(text)
                 except Exception as e:
                     logger.error(f"Error transcribing audio: {e}")
+                self.latest_audio_chunk = audio_chunk
             time.sleep(0.001)
 
     def transcribe_from_audio_file(self, filepath: str):

@@ -28,8 +28,12 @@ if __name__ == "__main__":
     logger.info(f"Bot name: {bot_name}")
 
     # Create a SpeechToText object
-    keyword_entries = [(bot_name, 0.95)]
-    speech_to_text = SpeechToText(device_index=listening_device.device_index, keyword_entries=keyword_entries)
+    #keyword_entries = [(bot_name, 0.95)]
+    keyword_entries = None
+    speech_to_text = SpeechToText(device_index=listening_device.device_index,
+                                  keyword_entries=keyword_entries,
+                                  credentials_json_file_path='google_cloud_credentials.json'
+                                  )
     speech_to_text.start()
     logger.info("Listening for audio")
 
@@ -52,19 +56,36 @@ if __name__ == "__main__":
 
     conversation_uuid = None
     consecutive_confused_responses = 0
-    #conversation_uuid = str(uuid4())
+    speech_to_text.set_engine("sphinx")
 
     while True:
         # Check if the transcription queue has any messages
         if speech_to_text.transcription:
             transcribed_message = speech_to_text.transcription.pop(0)
+            transcribed_message = transcribed_message.strip().lower()
             logger.info(f"Transcribed message: {transcribed_message}")
 
-            if "ringo" in transcribed_message.lower():
-                conversation_uuid = str(uuid4())
-                logger.info(f"New conversation: {conversation_uuid}")
+            if not conversation_uuid and bot_name in transcribed_message.lower():
+                logger.info("Starting new conversation")
+                # We want to transcribe the latest audio chunk using Google's speech-to-text engine
+                # because it's more accurate than Sphinx.
 
-            if any(keyword in transcribed_message for keyword in ["bye", "goodbye", "quit", "exit", "end", "stop"]):
+                # Set the speech-to-text engine to Google
+                speech_to_text.set_engine("google")
+
+                try:
+                    transcribed_message = speech_to_text._transcribe_from_audio_data(speech_to_text.latest_audio_chunk)
+                except Exception as e:
+                    logger.error(f"Error transcribing audio with Google Cloud: {e} - using Sphinx transcription instead")
+                    transcribed_message = None
+
+                logger.info(f"New transcribed message: {transcribed_message}")
+                conversation_uuid = str(uuid4())
+                logger.info(f"New conversation UUID: {conversation_uuid}")
+
+            end_keywords = ["bye", "goodbye", "quit", "exit"]
+            transcribed_message_words = transcribed_message.split()
+            if any(end_keyword in transcribed_message_words for end_keyword in end_keywords):
                 conversation_uuid = None
                 logger.info(f"Ending conversation due to goodbye: {conversation_uuid}")
                 text_to_speech.speak_on_device("Goodbye", speaking_device)
@@ -79,21 +100,31 @@ if __name__ == "__main__":
             )
 
             logger.info(f"OpenAI response: {openai_response}")
-            text_to_speech.speak_on_device(openai_response, speaking_device)
+            end_conversation = False
 
             if "ENDING" in openai_response:
-                conversation_uuid = None
+                openai_response.replace("ENDING", "")
                 logger.info(f"Ending conversation due to ENDING: {conversation_uuid}")
-                text_to_speech.speak_on_device("Ended conversation", speaking_device)
+                end_conversation = True
+
             elif "CONFUSED" in openai_response:
+                openai_response.replace("CONFUSED", "")
                 consecutive_confused_responses += 1
                 if consecutive_confused_responses > 3:
-                    conversation_uuid = None
-                    consecutive_confused_responses = 0
                     logger.info(f"Ending conversation due to consecutive CONFUSED responses: {conversation_uuid}")
-                    text_to_speech.speak_on_device("Ended conversation", speaking_device)
+                    end_conversation = True
+
             elif "NORMAL" in openai_response:
                 openai_response.replace("NORMAL", "")
+                consecutive_confused_responses = 0
+
+            text_to_speech.speak_on_device(openai_response, speaking_device)
+
+            if end_conversation:
+                conversation_uuid = None
+                consecutive_confused_responses = 0
+                text_to_speech.speak_on_device("Ended conversation", speaking_device)
+                speech_to_text.set_engine("sphinx")
 
         time.sleep(0.001)
 
