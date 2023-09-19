@@ -131,15 +131,21 @@ class Actions:
     def move_mouse_down(self, distance: int = 50, speed: float = 1):
         self.move_mouse('down', distance, speed)
 
-    def nod(self):
+    def nod_head(self):
         actions.move_mouse_up(distance=250, speed=0.999)
-        actions.move_mouse_down(distance=250, speed=0.999)
+        actions.move_mouse_down(distance=500, speed=0.999)
+        actions.move_mouse_up(distance=250, speed=0.999)
+
+    def shake_head(self):
+        actions.move_mouse_left(distance=250, speed=0.999)
+        actions.move_mouse_right(distance=500, speed=0.999)
+        actions.move_mouse_left(distance=250, speed=0.999)
 
 if __name__ == "__main__":
     actions = Actions(window_title_substring="NeosVR")
     while True:
         if actions.is_window_focused(actions.window_title_substring):
             print("Neos is focused")
-            actions.nod()
+            actions.shake_head()
 
         time.sleep(1)
