@@ -40,7 +40,8 @@ if __name__ == "__main__":
     logger.info("Listening for audio")
 
     character = Character(name="ringo",
-                          window_title="NeosVR",
+                          #window_title="NeosVR",
+                          window_title="VRChat",
                           text_to_speech=text_to_speech,
                           speech_to_text=speech_to_text,
                           speaking_device=speaking_device,
