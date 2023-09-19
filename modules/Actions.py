@@ -3,9 +3,7 @@ import ctypes
 import pygetwindow as gw
 from typing import Optional
 
-SendInput = ctypes.windll.user32.SendInput
-
-# Constants for commonly used keys
+# Constants for commonly used keys (using scancodes)
 W = 0x11
 A = 0x1E
 S = 0x1F
@@ -43,12 +41,15 @@ class Input(ctypes.Structure):
     _fields_ = [("type", ctypes.c_ulong),
                 ("ii", Input_I)]
 
+
 class Actions:
     def __init__(self, window_title_substring: Optional[str] = None):
+        """Initialize the Actions class with an optional window title substring."""
         self.window_title_substring = window_title_substring
 
     @staticmethod
     def is_window_focused(title_substring):
+        """Check if a window containing title_substring is currently focused."""
         try:
             active_window = gw.getActiveWindow()
             return title_substring.lower() in active_window.title.lower()
@@ -90,28 +91,54 @@ class Actions:
         time.sleep(0.5)
         self.release_key(D)
 
-    def move_mouse_left(self):
-        ctypes.windll.user32.mouse_event(0x0001, -50, 0, 0, 0)  # x, y, dwData, dwExtraInfo
-        time.sleep(0.1)
+    def move_mouse(self, direction, distance: int=50, speed: float=1):
+        """
+        :param direction:
+        :param distance:
+        :param speed: A float between 0 (exclusive) and 1 (inclusive). 1 Means instant movement.
+        :return:
+        Move the mouse in a direction ('left', 'right') by a certain distance at a given speed.
+        """
 
-    def move_mouse_right(self):
-        ctypes.windll.user32.mouse_event(0x0001, 50, 0, 0, 0)
-        time.sleep(0.1)
+        # Validate the speed value
+        if speed <= 0 or speed > 1:
+            raise ValueError("Invalid speed value. Must be between 0 and 1 (exclusive).")
+
+        # Calculate the delay based on the speed
+        delay = 1 - speed
+
+        if direction == 'left':
+            step = -1  # Each segment moves left by 5 pixels
+        else:
+            step = 1  # Each segment moves right by 5 pixels
+
+        for _ in range(distance):
+            ctypes.windll.user32.mouse_event(0x0001, step, 0, 0, 0)
+            time.sleep(delay / distance)  # Wait for the calculated amount of time between each segment
+
 
 if __name__ == "__main__":
     actions = Actions(window_title_substring="NeosVR")
     while True:
         if actions.is_window_focused(actions.window_title_substring):
             print("Neos is focused")
-            actions.move_forward()
-            time.sleep(1)
-            actions.move_back()
-            time.sleep(1)
             actions.turn_left()
             time.sleep(1)
             actions.turn_right()
             time.sleep(1)
-            actions.move_mouse_left()
+            actions.move_forward()
             time.sleep(1)
-            actions.move_mouse_right()
+            actions.move_back()
+            time.sleep(1)
+            actions.move_mouse('left', distance=300, speed=1)
+            time.sleep(1)
+            actions.move_mouse('right', distance=300, speed=1)
+            time.sleep(1)
+            actions.move_mouse('left', distance=300, speed=0.5)
+            time.sleep(1)
+            actions.move_mouse('right', distance=300, speed=0.5)
+            time.sleep(1)
+            actions.move_mouse('left', distance=300, speed=0.25)
+            time.sleep(1)
+            actions.move_mouse('right', distance=300, speed=0.25)
         time.sleep(1)
