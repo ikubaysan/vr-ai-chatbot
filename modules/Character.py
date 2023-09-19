@@ -6,6 +6,7 @@ from modules.TextToSpeech import TextToSpeech
 from modules.AudioDevice import AudioDevice
 from modules.enums.ActionEnum import ActionEnum
 from uuid import uuid4
+import time
 
 class State(ABC):
 
@@ -23,6 +24,10 @@ class State(ABC):
 
 
 class WanderingState(State):
+    MINIMUM_TIME_BETWEEN_ACTIONS = 10.0
+    def __init__(self):
+        self.last_action_time = 0
+        return
 
     @property
     def is_wandering(self):
@@ -32,8 +37,18 @@ class WanderingState(State):
     def execute(self):
         logger.info("Wandering around...")
 
+    def update_last_action_time(self):
+        self.last_action_time = time.time()
+
+    def is_time_to_act(self):
+        current_time = time.time()
+        time_since_last_action = current_time - self.last_action_time
+        return time_since_last_action >= self.MINIMUM_TIME_BETWEEN_ACTIONS
+
 
 class ConversingState(State):
+    def __init__(self):
+        return
 
     @property
     def is_conversing(self):
@@ -45,6 +60,8 @@ class ConversingState(State):
 
 
 class PerformingActionState(State):
+    def __init__(self):
+        return
 
     @property
     def is_performing_action(self):
@@ -103,3 +120,8 @@ class Character:
 
     def update(self):
         self.state.execute()
+
+        if self.state.is_wandering and self.state.is_time_to_act() and self.actions.window_is_focused and not self.actions.action_is_ongoing:
+            logger.info(f"Character '{self.name}' is wandering and it's time to act.")
+            self.actions.enqueue_random_action()
+            self.state.update_last_action_time()

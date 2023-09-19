@@ -153,9 +153,7 @@ if __name__ == "__main__":
                 logger.info(f"Ending conversation: {character.conversation_uuid}")
                 character.end_conversation()
 
-        if character.state.is_wandering and character.actions.window_is_focused and not character.actions.action_is_ongoing:
-            character.actions.enqueue_random_action()
-            time.sleep(random.uniform(1, 10))
+        character.update()
 
         time.sleep(0.001)
 
