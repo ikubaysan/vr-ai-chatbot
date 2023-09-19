@@ -7,6 +7,7 @@ from collections import deque
 from enum import Enum
 from modules.helpers.logging_helper import logger
 from modules.enums.ActionEnum import ActionEnum
+import random
 
 # Constants for commonly used keys (using scancodes)
 W = 0x11
@@ -58,6 +59,7 @@ class Actions:
         self.thread = None
         self.window_focus_thread = None
         self.stop_flag = False
+        self.action_is_ongoing = False
 
     def start(self):
         if self.thread is None:
@@ -69,30 +71,57 @@ class Actions:
             self.window_focus_thread.start()
             logger.info(f"Started window focus thread")
 
+    def enqueue_random_action(self):
+        random_action = random.choice([
+            ActionEnum.TURN_LEFT_RANDOMLY,
+            ActionEnum.TURN_RIGHT_RANDOMLY,
+            ActionEnum.MOVE_FORWARD_RANDOMLY,
+            ActionEnum.MOVE_BACK_RANDOMLY])
+        self.enqueue_action(random_action)
+
+    def unset_stop_flag_after_action_finishes(self):
+        self.wait_for_action_to_finish()
+        self.stop_flag = False
+        logger.info("Set stop flag to False after action finished.")
+
+    def wait_for_action_to_finish(self):
+        while self.action_is_ongoing:
+            time.sleep(0.01)
+
     def _check_window_focus(self):
+        prev_window_is_focused = None  # To keep track of previous state
         while True:
             self.window_is_focused = self.is_window_focused(self.window_title)
+
+            if self.window_is_focused != prev_window_is_focused:  # Check if state changed
+                if self.window_is_focused:
+                    logger.info(f"Window '{self.window_title}' is now focused.")
+                else:
+                    logger.info(f"Window '{self.window_title}' is no longer focused.")
+
+            prev_window_is_focused = self.window_is_focused  # Update previous state
             time.sleep(0.01)
 
     def enqueue_action(self, action: ActionEnum):
         self.action_queue.append(action)
-        logger.info(f"Enqueued action: {action.value}")
+        logger.info(f"Enqueued action: {action.value}. Total actions in queue: {len(self.action_queue)}")
 
     def _execute_actions(self):
         while True:
             if self.window_is_focused:
                 while self.action_queue and self.window_is_focused:
-                    if self.stop_flag:
-                        logger.info(f"Stop flag set, clearing action queue")
-                        self.action_queue.clear()
-                        self.stop_flag = False
-                        break
+                    self.action_is_ongoing = True
                     action = self.action_queue.popleft()
                     getattr(self, action.value)()
                     logger.info(f"Executed action: {action.value}")
+                    if self.stop_flag:
+                        logger.info(f"Stop flag set. Stopping current actions and clearing action queue")
+                        self.action_queue.clear()
+                        self.action_is_ongoing = False
+                        break
+                    self.action_is_ongoing = False
             else:
                 self.action_queue.clear()
-                self.stop_flag = False
             time.sleep(0.001)
 
     @staticmethod
@@ -100,6 +129,8 @@ class Actions:
         """Check if a window with the title is currently focused."""
         try:
             active_window = gw.getActiveWindow()
+            if active_window is None:
+                return False
             #return title.lower() in active_window.title.lower()
             return title.lower() == active_window.title.lower()
         except Exception as e:
@@ -216,10 +247,10 @@ class Actions:
         self.move_mouse_left(distance=250, duration=0.05)
 
     def turn_right(self):
-        self.move_mouse_right(distance=500, duration=5)
+        self.move_mouse_right(distance=1000, duration=0.25)
 
     def turn_left(self):
-        self.move_mouse_left(distance=500, duration=5)
+        self.move_mouse_left(distance=1000, duration=0.25)
 
     def turn_right_until_stop_flag(self):
         self.move_mouse_right(do_until_stop_flag=True)
@@ -228,10 +259,22 @@ class Actions:
         self.move_mouse_left(do_until_stop_flag=True)
 
     def move_forward_until_stop_flag(self):
-        self.move_forward(duration=1, do_until_stop_flag=True)
+        self.move_forward(duration=0.5, do_until_stop_flag=True)
 
     def move_back_until_stop_flag(self):
-        self.move_back(duration=1, do_until_stop_flag=True)
+        self.move_back(duration=0.5, do_until_stop_flag=True)
+
+    def turn_right_randomly(self):
+        self.move_mouse_right(distance=random.randint(100, 1000), duration=random.uniform(0.1, 0.5))
+
+    def turn_left_randomly(self):
+        self.move_mouse_left(distance=random.randint(100, 1000), duration=random.uniform(0.1, 0.5))
+
+    def move_forward_randomly(self):
+        self.move_forward(duration=random.uniform(0.1, 0.5))
+
+    def move_back_randomly(self):
+        self.move_back(duration=random.uniform(0.1, 0.5))
 
 
 if __name__ == "__main__":

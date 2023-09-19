@@ -15,3 +15,7 @@ class ActionEnum(Enum):
     TURN_RIGHT_UNTIL_STOP_FLAG = "turn_right_until_stop_flag"
     MOVE_FORWARD_UNTIL_STOP_FLAG = "move_forward_until_stop_flag"
     MOVE_BACK_UNTIL_STOP_FLAG = "move_back_until_stop_flag"
+    TURN_LEFT_RANDOMLY = "turn_left_randomly"
+    TURN_RIGHT_RANDOMLY = "turn_right_randomly"
+    MOVE_FORWARD_RANDOMLY = "move_forward_randomly"
+    MOVE_BACK_RANDOMLY = "move_back_randomly"

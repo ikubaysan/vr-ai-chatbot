@@ -10,17 +10,14 @@ from uuid import uuid4
 class State(ABC):
 
     @property
-    @abstractmethod
     def is_wandering(self):
         return False
 
     @property
-    @abstractmethod
     def is_conversing(self):
         return False
 
     @property
-    @abstractmethod
     def is_performing_action(self):
         return False
 

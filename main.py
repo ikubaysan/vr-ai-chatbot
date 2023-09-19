@@ -5,7 +5,7 @@ from modules.TextToSpeech import TextToSpeech
 from modules.PyAudioWrapper import PyAudioWrapper
 from modules.OpenAIAPIClient import APIClient
 from modules.enums.ActionEnum import ActionEnum
-from modules.Character import Character
+from modules.Character import Character, WanderingState, ConversingState, PerformingActionState
 from modules.Config import Config
 from uuid import uuid4
 import os
@@ -87,6 +87,9 @@ if __name__ == "__main__":
             if character.state.is_performing_action and any(stop_action_keyword in transcribed_message_words for stop_action_keyword in stop_action_keywords):
                 logger.info(f"Stopping action due to stop keyword.")
                 character.actions.stop_flag = True
+                logger.info("Set stop flag to True")
+                character.actions.unset_stop_flag_after_action_finishes()
+                logger.info("Action finished")
                 character.set_state(character.previous_state)
                 continue
 
@@ -118,16 +121,25 @@ if __name__ == "__main__":
             elif openai_response.startswith("TYPE_NO"):
                 openai_response = openai_response.replace("TYPE_NO", "")
                 character.actions.enqueue_action(ActionEnum.SHAKE_HEAD)
-            elif openai_response.startswith("TYPE_CMD_TURN"):
-                left_turn_keywords = ["left", "counter"]
-                if any(left_turn_keyword in transcribed_message_words for left_turn_keyword in left_turn_keywords):
-                    character.actions.enqueue_action(ActionEnum.TURN_LEFT_UNTIL_STOP_FLAG)
-                else:
-                    character.actions.enqueue_action(ActionEnum.TURN_RIGHT_UNTIL_STOP_FLAG)
-            elif openai_response.startswith("TYPE_CMD_FORWARD"):
-                character.actions.enqueue_action(ActionEnum.MOVE_FORWARD_UNTIL_STOP_FLAG)
-            elif openai_response.startswith("TYPE_CMD_BACK"):
-                character.actions.enqueue_action(ActionEnum.MOVE_BACK_UNTIL_STOP_FLAG)
+            elif openai_response.startswith("TYPE_CMD"):
+                if not character.actions.window_is_focused:
+                    openai_response = "Sorry, I cannot move right now."
+                elif openai_response.startswith("TYPE_CMD_TURN"):
+                    openai_response = openai_response.replace("TYPE_CMD_TURN", "")
+                    left_turn_keywords = ["left", "counter"]
+                    if any(left_turn_keyword in transcribed_message_words for left_turn_keyword in left_turn_keywords):
+                        character.actions.enqueue_action(ActionEnum.TURN_LEFT_UNTIL_STOP_FLAG)
+                    else:
+                        character.actions.enqueue_action(ActionEnum.TURN_RIGHT_UNTIL_STOP_FLAG)
+                    character.set_state(PerformingActionState())
+                elif openai_response.startswith("TYPE_CMD_FORWARD"):
+                    openai_response = openai_response.replace("TYPE_CMD_FORWARD", "")
+                    character.actions.enqueue_action(ActionEnum.MOVE_FORWARD_UNTIL_STOP_FLAG)
+                    character.set_state(PerformingActionState())
+                elif openai_response.startswith("TYPE_CMD_BACK"):
+                    openai_response = openai_response.replace("TYPE_CMD_BACK", "")
+                    character.actions.enqueue_action(ActionEnum.MOVE_BACK_UNTIL_STOP_FLAG)
+                    character.set_state(PerformingActionState())
 
             text_to_speech.speak_on_device(openai_response, speaking_device)
 
@@ -135,6 +147,8 @@ if __name__ == "__main__":
                 logger.info(f"Ending conversation: {character.conversation_uuid}")
                 character.end_conversation()
 
+        if character.state.is_wandering and not character.actions.action_is_ongoing():
+            character.actions.enqueue_random_action()
         time.sleep(0.001)
 
     pass
