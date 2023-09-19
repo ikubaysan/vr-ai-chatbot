@@ -6,7 +6,9 @@ from modules.SpeechToText import SpeechToText
 from modules.TextToSpeech import TextToSpeech
 from modules.PyAudioWrapper import PyAudioWrapper
 from modules.OpenAIAPIClient import APIClient
+from modules.enums.ActionEnum import ActionEnum
 from modules.Config import Config
+from modules.Actions import Actions
 from uuid import uuid4
 import os
 
@@ -58,6 +60,9 @@ if __name__ == "__main__":
     consecutive_confused_responses = 0
     speech_to_text.set_engine("sphinx")
 
+    actions = Actions()
+    actions.start()
+
     while True:
         # Check if the transcription queue has any messages
         if speech_to_text.transcription:
@@ -102,20 +107,22 @@ if __name__ == "__main__":
             logger.info(f"OpenAI response: {openai_response}")
             end_conversation = False
 
-            if "ENDING" in openai_response:
-                openai_response.replace("ENDING", "")
-                logger.info(f"Ending conversation due to ENDING: {conversation_uuid}")
+            if "TYPE_ENDING" in openai_response:
+                openai_response.replace("TYPE_ENDING", "")
+                logger.info(f"Ending conversation due to TYPE_ENDING: {conversation_uuid}")
                 end_conversation = True
-
-            elif "CONFUSED" in openai_response:
-                openai_response.replace("CONFUSED", "")
+            elif "TYPE_CONFUSED" in openai_response:
+                openai_response.replace("TYPE_CONFUSED", "")
                 consecutive_confused_responses += 1
                 if consecutive_confused_responses > 3:
-                    logger.info(f"Ending conversation due to consecutive CONFUSED responses: {conversation_uuid}")
+                    logger.info(f"Ending conversation due to consecutive TYPE_CONFUSED responses: {conversation_uuid}")
                     end_conversation = True
-
-            elif "NORMAL" in openai_response:
-                openai_response.replace("NORMAL", "")
+            elif "TYPE_YES" in openai_response:
+                actions.enqueue_action(ActionEnum.NOD_HEAD)
+            elif "TYPE_NO" in openai_response:
+                actions.enqueue_action(ActionEnum.SHAKE_HEAD)
+            elif "TYPE_NORMAL" in openai_response:
+                openai_response.replace("TYPE_NORMAL", "")
                 consecutive_confused_responses = 0
 
             text_to_speech.speak_on_device(openai_response, speaking_device)

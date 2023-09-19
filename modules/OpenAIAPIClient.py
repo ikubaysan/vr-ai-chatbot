@@ -63,7 +63,7 @@ class ConversationContainer:
 class APIClient:
     def __init__(self, base_url: str, path: str, api_key: str, model: str, max_conversation_tokens: int,
                  max_response_tokens: int, max_dialogues_per_conversation: int, conversation_prune_after_seconds: int,
-                 temperature: float, system_message: str = None):
+                 temperature: float, system_message: str = None, forced_system_message: str = None):
         self.base_url = base_url
         self.path = path
         self.api_key = api_key
@@ -72,6 +72,7 @@ class APIClient:
         self.max_response_tokens = max_response_tokens
         self.temperature = temperature
         self.system_message = system_message
+        self.forced_system_message = forced_system_message
         self.prompt_histories = ConversationContainer(conversation_prune_after_seconds=conversation_prune_after_seconds,
                                                       max_dialogues_per_conversation=max_dialogues_per_conversation,
                                                       model=model)
@@ -99,6 +100,9 @@ class APIClient:
             for message in previous_messages:
                 messages.append(message)
             # Finally, add the new prompt
+            if self.forced_system_message is not None:
+                prompt = self.forced_system_message + prompt
+
             messages.append({"role": "user", "content": prompt})
 
         body = {

@@ -17,7 +17,8 @@ def api_client():
                      temperature=config.temperature,
                      conversation_prune_after_seconds=config.conversation_prune_after_seconds,
                      max_dialogues_per_conversation=config.max_dialogues_per_conversation,
-                     system_message=config.system_message
+                     system_message=config.system_message,
+                     forced_system_message=config.forced_system_message
                      )
 
 def test_APIClient_send_prompt_english(api_client: APIClient):
@@ -33,8 +34,9 @@ def test_APIClient_send_prompt_english_2(api_client: APIClient):
 def test_APIClient_send_prompt_english_quit(api_client: APIClient):
     response1 = api_client.send_prompt(prompt="or the and", conversation_id="test")
     response2 = api_client.send_prompt(prompt="whats your name", conversation_id="test")
-    #response3 = api_client.send_prompt(prompt="nice to meet you, goodbye", conversation_id="test")
-    response3 = api_client.send_prompt(prompt="thank you, that's all", conversation_id="test")
+    response3 = api_client.send_prompt(prompt="does nine plus nine equal 16", conversation_id="test")
+    response4 = api_client.send_prompt(prompt="does ten plus ten equal 20", conversation_id="test")
+    response5 = api_client.send_prompt(prompt="thank you, that's all", conversation_id="test")
     return
 
 

@@ -1,7 +1,11 @@
 import time
 import ctypes
 import pygetwindow as gw
+import threading
 from typing import Optional
+from collections import deque
+from enum import Enum
+from modules.enums.ActionEnum import ActionEnum
 
 # Constants for commonly used keys (using scancodes)
 W = 0x11
@@ -43,16 +47,40 @@ class Input(ctypes.Structure):
 
 
 class Actions:
-    def __init__(self, window_title_substring: Optional[str] = None):
+    def __init__(self, window_title: Optional[str] = None):
         """Initialize the Actions class with an optional window title substring."""
-        self.window_title_substring = window_title_substring
+        if not window_title:
+            raise ValueError("A window title is required.")
+        self.window_title = window_title
+        self.action_queue = deque()
+        self.thread = None
+
+    def start(self):
+        if self.thread is None:
+            self.thread = threading.Thread(target=self._execute_actions)
+            self.thread.start()
+
+    def enqueue_action(self, action: ActionEnum):
+        self.action_queue.append(action)
+
+    def _execute_actions(self):
+        while True:
+            if self.is_window_focused(self.window_title):
+                while self.action_queue:
+                    action = self.action_queue.popleft()
+                    getattr(self, action.value)()
+            else:
+                # Clear the queue if the window is not focused
+                self.action_queue.clear()
+
+            time.sleep(1)
 
     @staticmethod
-    def is_window_focused(title_substring):
-        """Check if a window containing title_substring is currently focused."""
+    def is_window_focused(title: str):
+        """Check if a window with the title is currently focused."""
         try:
             active_window = gw.getActiveWindow()
-            return title_substring.lower() in active_window.title.lower()
+            return title.lower() in active_window.title.lower()
         except Exception as e:
             print(f"An error occurred: {e}")
             return False
@@ -141,11 +169,13 @@ class Actions:
         actions.move_mouse_right(distance=500, speed=0.999)
         actions.move_mouse_left(distance=250, speed=0.999)
 
-if __name__ == "__main__":
-    actions = Actions(window_title_substring="NeosVR")
-    while True:
-        if actions.is_window_focused(actions.window_title_substring):
-            print("Neos is focused")
-            actions.shake_head()
 
+if __name__ == "__main__":
+    actions = Actions(window_title="NeosVR")
+    actions.start()
+
+    while True:
+        if actions.is_window_focused(actions.window_title):
+            print("Neos is focused")
+            actions.enqueue_action(ActionEnum.SHAKE_HEAD)
         time.sleep(1)

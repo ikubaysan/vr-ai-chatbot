@@ -21,3 +21,6 @@ class Config:
         self.temperature = float(self.config['openai_api_client']['temperature'])
         self.max_prompt_chars = int(self.config['openai_api_client']['max_prompt_chars'])
         self.system_message = self.config['openai_api_client']['system_message'] if len(self.config['openai_api_client']['system_message']) > 0 else None
+        self.forced_system_message = self.config['openai_api_client']['forced_system_message'] if len(self.config['openai_api_client']['forced_system_message']) > 0 else None
+        if self.system_message and self.forced_system_message:
+            raise Exception("Cannot have both system_message and forced_system_message set in config.ini")
