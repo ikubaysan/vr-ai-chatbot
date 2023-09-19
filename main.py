@@ -52,7 +52,8 @@ if __name__ == "__main__":
                      temperature=config.temperature,
                      conversation_prune_after_seconds=config.conversation_prune_after_seconds,
                      max_dialogues_per_conversation=config.max_dialogues_per_conversation,
-                     system_message=config.system_message
+                     system_message=config.system_message,
+                     forced_system_message=config.forced_system_message
                      )
 
 
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     consecutive_confused_responses = 0
     speech_to_text.set_engine("sphinx")
 
-    actions = Actions()
+    actions = Actions(window_title="NeosVR")
     actions.start()
 
     while True:
@@ -87,6 +88,7 @@ if __name__ == "__main__":
                 logger.info(f"New transcribed message: {transcribed_message}")
                 conversation_uuid = str(uuid4())
                 logger.info(f"New conversation UUID: {conversation_uuid}")
+                actions.enqueue_action(ActionEnum.NOD_HEAD)
 
             end_keywords = ["bye", "goodbye", "quit", "exit"]
             transcribed_message_words = transcribed_message.split()
@@ -108,22 +110,25 @@ if __name__ == "__main__":
             end_conversation = False
 
             if "TYPE_ENDING" in openai_response:
-                openai_response.replace("TYPE_ENDING", "")
+                openai_response = openai_response.replace("TYPE_ENDING", "")
                 logger.info(f"Ending conversation due to TYPE_ENDING: {conversation_uuid}")
                 end_conversation = True
             elif "TYPE_CONFUSED" in openai_response:
-                openai_response.replace("TYPE_CONFUSED", "")
+                openai_response = openai_response.replace("TYPE_CONFUSED", "")
                 consecutive_confused_responses += 1
                 if consecutive_confused_responses > 3:
                     logger.info(f"Ending conversation due to consecutive TYPE_CONFUSED responses: {conversation_uuid}")
                     end_conversation = True
+            elif "TYPE_NORMAL" in openai_response:
+                openai_response = openai_response.replace("TYPE_NORMAL", "")
+                consecutive_confused_responses = 0
             elif "TYPE_YES" in openai_response:
+                openai_response = openai_response.replace("TYPE_YES", "")
+                actions.enqueue_action(ActionEnum.NOD_HEAD)
                 actions.enqueue_action(ActionEnum.NOD_HEAD)
             elif "TYPE_NO" in openai_response:
+                openai_response = openai_response.replace("TYPE_NO", "")
                 actions.enqueue_action(ActionEnum.SHAKE_HEAD)
-            elif "TYPE_NORMAL" in openai_response:
-                openai_response.replace("TYPE_NORMAL", "")
-                consecutive_confused_responses = 0
 
             text_to_speech.speak_on_device(openai_response, speaking_device)
 

@@ -5,6 +5,7 @@ import threading
 from typing import Optional
 from collections import deque
 from enum import Enum
+from modules.helpers.logging_helper import logger
 from modules.enums.ActionEnum import ActionEnum
 
 # Constants for commonly used keys (using scancodes)
@@ -62,6 +63,8 @@ class Actions:
 
     def enqueue_action(self, action: ActionEnum):
         self.action_queue.append(action)
+        logger.info(f"Enqueued action: {action.value}")
+
 
     def _execute_actions(self):
         while True:
@@ -69,6 +72,7 @@ class Actions:
                 while self.action_queue:
                     action = self.action_queue.popleft()
                     getattr(self, action.value)()
+                    logger.info(f"Executed action: {action.value}")
             else:
                 # Clear the queue if the window is not focused
                 self.action_queue.clear()
@@ -160,14 +164,14 @@ class Actions:
         self.move_mouse('down', distance, speed)
 
     def nod_head(self):
-        actions.move_mouse_up(distance=250, speed=0.999)
-        actions.move_mouse_down(distance=500, speed=0.999)
-        actions.move_mouse_up(distance=250, speed=0.999)
+        self.move_mouse_up(distance=250, speed=0.999)
+        self.move_mouse_down(distance=500, speed=0.999)
+        self.move_mouse_up(distance=250, speed=0.999)
 
     def shake_head(self):
-        actions.move_mouse_left(distance=250, speed=0.999)
-        actions.move_mouse_right(distance=500, speed=0.999)
-        actions.move_mouse_left(distance=250, speed=0.999)
+        self.move_mouse_left(distance=250, speed=0.999)
+        self.move_mouse_right(distance=500, speed=0.999)
+        self.move_mouse_left(distance=250, speed=0.999)
 
 
 if __name__ == "__main__":
