@@ -100,23 +100,34 @@ if __name__ == "__main__":
 
             logger.info(f"OpenAI response: {openai_response}")
 
-            if "TYPE_NORMAL" in openai_response:
+            if openai_response.startswith("TYPE_NORMAL"):
+                # Remove the TYPE_NORMAL prefix
                 openai_response = openai_response.replace("TYPE_NORMAL", "")
                 character.consecutive_confused_responses = 0
-            elif "TYPE_ENDING" in openai_response:
+            elif openai_response.startswith("TYPE_ENDING"):
                 openai_response = openai_response.replace("TYPE_ENDING", "")
                 logger.info(f"Ending conversation due to TYPE_ENDING: {character.conversation_uuid}")
-            elif "TYPE_CONFUSED" in openai_response:
+            elif openai_response.startswith("TYPE_CONFUSED"):
                 openai_response = openai_response.replace("TYPE_CONFUSED", "")
                 character.consecutive_confused_responses += 1
                 if character.consecutive_confused_responses > 3:
                     logger.info(f"Ending conversation due to consecutive TYPE_CONFUSED responses: {character.conversation_uuid}")
-            elif "TYPE_YES" in openai_response:
+            elif openai_response.startswith("TYPE_YES"):
                 openai_response = openai_response.replace("TYPE_YES", "")
                 character.actions.enqueue_action(ActionEnum.NOD_HEAD_TWICE)
-            elif "TYPE_NO" in openai_response:
+            elif openai_response.startswith("TYPE_NO"):
                 openai_response = openai_response.replace("TYPE_NO", "")
                 character.actions.enqueue_action(ActionEnum.SHAKE_HEAD)
+            elif openai_response.startswith("TYPE_CMD_TURN"):
+                left_turn_keywords = ["left", "counter"]
+                if any(left_turn_keyword in transcribed_message_words for left_turn_keyword in left_turn_keywords):
+                    character.actions.enqueue_action(ActionEnum.TURN_LEFT_UNTIL_STOP_FLAG)
+                else:
+                    character.actions.enqueue_action(ActionEnum.TURN_RIGHT_UNTIL_STOP_FLAG)
+            elif openai_response.startswith("TYPE_CMD_FORWARD"):
+                character.actions.enqueue_action(ActionEnum.MOVE_FORWARD_UNTIL_STOP_FLAG)
+            elif openai_response.startswith("TYPE_CMD_BACK"):
+                character.actions.enqueue_action(ActionEnum.MOVE_BACK_UNTIL_STOP_FLAG)
 
             text_to_speech.speak_on_device(openai_response, speaking_device)
 

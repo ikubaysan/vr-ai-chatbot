@@ -34,9 +34,14 @@ def test_APIClient_send_prompt_english_2(api_client: APIClient):
 def test_APIClient_send_prompt_english_quit(api_client: APIClient):
     response1 = api_client.send_prompt(prompt="taewimotw erastyumwftum", conversation_id="test")
     response2 = api_client.send_prompt(prompt="whats your name", conversation_id="test")
-    response3 = api_client.send_prompt(prompt="does nine plus nine equal 16", conversation_id="test")
-    response4 = api_client.send_prompt(prompt="does ten plus ten equal 20", conversation_id="test")
-    response5 = api_client.send_prompt(prompt="thank you, that's all", conversation_id="test")
+    # response3 = api_client.send_prompt(prompt="does nine plus nine equal 16", conversation_id="test")
+    # response4 = api_client.send_prompt(prompt="does ten plus ten equal 20", conversation_id="test")
+    #response5 = api_client.send_prompt(prompt="walk over here", conversation_id="test")
+    response5 = api_client.send_prompt(prompt="Turn clockwise", conversation_id="test")
+    response6 = api_client.send_prompt(prompt="Step back", conversation_id="test")
+    response7 = api_client.send_prompt(prompt="Walk this way", conversation_id="test")
+    response8 = api_client.send_prompt(prompt="Face me", conversation_id="test")
+    # response8 = api_client.send_prompt(prompt="thank you, that's all", conversation_id="test")
     return
 
 
