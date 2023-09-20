@@ -233,24 +233,24 @@ class Actions:
         self.move_mouse('down', distance, duration)
 
     def nod_head(self):
-        self.move_mouse_up(distance=250, duration=0.05)
-        self.move_mouse_down(distance=500, duration=0.1)
-        self.move_mouse_up(distance=250, duration=0.05)
+        self.move_mouse_up(distance=250, duration=0.03)
+        self.move_mouse_down(distance=500, duration=0.06)
+        self.move_mouse_up(distance=250, duration=0.03)
 
     def nod_head_twice(self):
         self.nod_head()
         self.nod_head()
 
     def shake_head(self):
-        self.move_mouse_left(distance=250, duration=0.05)
-        self.move_mouse_right(distance=500, duration=0.1)
-        self.move_mouse_left(distance=250, duration=0.05)
+        self.move_mouse_left(distance=250, duration=0.03)
+        self.move_mouse_right(distance=500, duration=0.06)
+        self.move_mouse_left(distance=250, duration=0.03)
 
     def turn_right(self):
-        self.move_mouse_right(distance=1000, duration=0.25)
+        self.move_mouse_right(distance=1000, duration=0.5)
 
     def turn_left(self):
-        self.move_mouse_left(distance=1000, duration=0.25)
+        self.move_mouse_left(distance=1000, duration=0.5)
 
     def turn_right_until_stop_flag(self):
         self.move_mouse_right(do_until_stop_flag=True)
@@ -271,10 +271,10 @@ class Actions:
         self.move_mouse_left(distance=random.randint(100, 1000), duration=random.uniform(0.1, 0.5))
 
     def move_forward_randomly(self):
-        self.move_forward(duration=random.uniform(0.1, 0.5))
+        self.move_forward(duration=random.uniform(0.1, 0.25))
 
     def move_back_randomly(self):
-        self.move_back(duration=random.uniform(0.1, 0.5))
+        self.move_back(duration=random.uniform(0.1, 0.25))
 
 
 if __name__ == "__main__":

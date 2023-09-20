@@ -25,6 +25,7 @@ def get_audio_devices(speaking_device_name: str, listening_device_name: str) -> 
 
 
 if __name__ == "__main__":
+    CHARACTER_NAME = "ringo"
 
     speaking_device, listening_device = get_audio_devices(speaking_device_name="cable-a", listening_device_name="cable-b")
     logger.info(f"Speaking device: {speaking_device}")
@@ -34,14 +35,15 @@ if __name__ == "__main__":
     text_to_speech = TextToSpeech()
     # Create a SpeechToText object
     speech_to_text = SpeechToText(device_index=listening_device.device_index,
-                                  credentials_json_file_path='google_cloud_credentials.json')
+                                  credentials_json_file_path='google_cloud_credentials.json',
+                                  keyword_entries=[(CHARACTER_NAME, 1)]) # Listen for the character name only
     speech_to_text.start()
     speech_to_text.set_engine("sphinx")
     logger.info("Listening for audio")
 
-    character = Character(name="ringo",
-                          #window_title="NeosVR",
-                          window_title="VRChat",
+    character = Character(name=CHARACTER_NAME,
+                          window_title="NeosVR",
+                          #window_title="VRChat",
                           text_to_speech=text_to_speech,
                           speech_to_text=speech_to_text,
                           speaking_device=speaking_device,
@@ -70,13 +72,20 @@ if __name__ == "__main__":
             logger.info(f"Transcribed message: {transcribed_message}")
 
             if character.state.is_wandering and character.name in transcribed_message.lower():
-                logger.info("Starting new conversation")
-                character.start_conversation()
+                logger.info(f"Character name {character.name} detected with Sphinx transcription")
+
                 try:
-                    transcribed_message = speech_to_text._transcribe_from_audio_data(speech_to_text.latest_audio_chunk)
+                    transcribed_message = speech_to_text._transcribe_from_audio_data(speech_to_text.latest_audio_chunk,
+                                                                                     engine="google")
                 except Exception as e:
-                    logger.error(f"Error transcribing audio with Google Cloud: {e} - using original Sphinx transcription instead")
-                logger.info(f"More accurate transcription using Google Cloud: {transcribed_message}")
+                    logger.error(f"Error transcribing audio with Google Cloud: {e}")
+                else:
+                    logger.info(f"More accurate transcription using Google Cloud: {transcribed_message}")
+                    if character.name in transcribed_message.lower():
+                        logger.info("Starting new conversation because character name was detected with Google Cloud transcription.")
+                        character.start_conversation()
+                    else:
+                        logger.info("Character name was not detected with Google Cloud transcription. Continuing to wander.")
 
             end_keywords = ["bye", "quit", "exit"]
             #transcribed_message_words = transcribed_message.split()
@@ -93,6 +102,9 @@ if __name__ == "__main__":
                 character.actions.unset_stop_flag_after_action_finishes()
                 logger.info("Action finished")
                 character.set_state(character.previous_state)
+                continue
+
+            if character.state.is_conversing and character.name not in transcribed_message.lower():
                 continue
 
             if not character.state.is_conversing:
@@ -117,10 +129,11 @@ if __name__ == "__main__":
                 logger.info(f"Ending conversation due to TYPE_ENDING: {character.conversation_uuid}")
             elif openai_response.startswith("TYPE_CONFUSED"):
                 openai_response = openai_response.replace("TYPE_CONFUSED", "")
-                character.consecutive_confused_responses += 1
-                if character.consecutive_confused_responses > 3:
-                    conversation_end_needed = True
-                    logger.info(f"Ending conversation due to consecutive TYPE_CONFUSED responses: {character.conversation_uuid}")
+                ### Now that I'm requiring the character name to be in a prompt, this is no longer needed
+                # character.consecutive_confused_responses += 1
+                # if character.consecutive_confused_responses > 3:
+                #     conversation_end_needed = True
+                #     logger.info(f"Ending conversation due to consecutive TYPE_CONFUSED responses: {character.conversation_uuid}")
             elif openai_response.startswith("TYPE_YES"):
                 openai_response = openai_response.replace("TYPE_YES", "")
                 character.actions.enqueue_action(ActionEnum.NOD_HEAD_TWICE)
@@ -147,7 +160,7 @@ if __name__ == "__main__":
                     character.actions.enqueue_action(ActionEnum.MOVE_BACK_UNTIL_STOP_FLAG)
                     character.set_state(PerformingActionState())
 
-            text_to_speech.speak_on_device(openai_response, speaking_device)
+            character.state.speak(text_to_speech=text_to_speech, text=openai_response, speaking_device=speaking_device)
 
             if conversation_end_needed:
                 logger.info(f"Ending conversation: {character.conversation_uuid}")

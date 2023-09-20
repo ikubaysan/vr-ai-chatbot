@@ -47,31 +47,45 @@ class SpeechToText:
                 logger.debug("Captured audio")
         logger.debug("End of start_capture()")
 
-    def _transcribe_from_audio_data(self, audio_data) -> str:
+    def _transcribe_from_audio_data(self, audio_data, engine: str = None) -> str:
+        """
+        :param audio_data:
+        :param engine: Optional. If not specified, the default engine will be used (self.engine member variable)
+        :return:
+        """
         try:
+            if not engine:
+                engine = self.engine
             # Directly use the AudioData object for recognition
-            if self.engine == "google":
+            if engine == "google":
                 text = self.recognizer.recognize_google_cloud(audio_data=audio_data, credentials_json=self.credentials_json_file_path)
-            elif self.engine == "sphinx":
+            elif engine == "sphinx":
                 text = self.recognizer.recognize_sphinx(audio_data=audio_data, keyword_entries=self.keyword_entries)
             else:
-                raise ValueError(f"Speech recognition engine '{self.engine}' not supported.")
+                raise ValueError(f"Speech recognition engine '{engine}' not supported.")
             return text
         except sr.UnknownValueError:
             return "Speech Recognition could not understand audio"
         except sr.RequestError as e:
             return f"Error: {e}"
 
-    def _transcribe_from_audio_source(self, audio_source: sr.AudioSource) -> str:
+    def _transcribe_from_audio_source(self, audio_source: sr.AudioSource, engine: str = None) -> str:
+        """
+        :param audio_source:
+        :param engine: Optional. If not specified, the default engine will be used (self.engine member variable)
+        :return:
+        """
         try:
+            if not engine:
+                engine = self.engine
             with audio_source as source:
                 audio = self.recognizer.listen(source)
-            if self.engine == "google":
+            if engine == "google":
                 text = self.recognizer.recognize_google_cloud(audio_data=audio, credentials_json=self.credentials_json_file_path)
-            elif self.engine == "sphinx":
+            elif engine == "sphinx":
                 text = self.recognizer.recognize_sphinx(audio_data=audio, keyword_entries=self.keyword_entries)
             else:
-                raise ValueError(f"Speech recognition engine '{self.engine}' not supported.")
+                raise ValueError(f"Speech recognition engine '{engine}' not supported.")
             return text
         except sr.UnknownValueError:
             return "Speech Recognition could not understand audio"
