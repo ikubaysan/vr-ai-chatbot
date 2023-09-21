@@ -69,46 +69,53 @@ if __name__ == "__main__":
         if speech_to_text.transcription:
             transcribed_message = speech_to_text.transcription.pop(0)
             transcribed_message = transcribed_message.strip().lower()
-            logger.info(f"Transcribed message: {transcribed_message}")
+            logger.info(f"Sphinx transcription: {transcribed_message}")
 
-            if character.state.is_wandering and character.name in transcribed_message.lower():
-                logger.info(f"Character name {character.name} detected with Sphinx transcription")
-
-                try:
-                    transcribed_message = speech_to_text._transcribe_from_audio_data(speech_to_text.latest_audio_chunk,
-                                                                                     engine="google")
-                except Exception as e:
-                    logger.error(f"Error transcribing audio with Google Cloud: {e}")
-                else:
-                    logger.info(f"More accurate transcription using Google Cloud: {transcribed_message}")
-                    if character.name in transcribed_message.lower():
-                        logger.info("Starting new conversation because character name was detected with Google Cloud transcription.")
-                        character.start_conversation()
-                    else:
-                        logger.info("Character name was not detected with Google Cloud transcription. Continuing to wander.")
-
-            end_keywords = ["bye", "quit", "exit"]
-            #transcribed_message_words = transcribed_message.split()
-            if character.state.is_conversing and any(end_keyword in transcribed_message for end_keyword in end_keywords):
-                logger.info(f"Ending conversation due to goodbye.")
-                character.end_conversation()
+            if character.name not in transcribed_message.lower():
                 continue
 
-            stop_action_keywords = ["stop", "wait", "hold", "pause"]
-            if character.state.is_performing_action and any(stop_action_keyword in transcribed_message for stop_action_keyword in stop_action_keywords):
-                logger.info(f"Stopping action due to stop keyword.")
-                character.actions.stop_flag = True
-                logger.info("Set stop flag to True")
-                character.actions.unset_stop_flag_after_action_finishes()
-                logger.info("Action finished")
-                character.set_state(character.previous_state)
+            logger.info(f"Character name {character.name} detected with Sphinx transcription")
+
+            try:
+                transcribed_message = speech_to_text._transcribe_from_audio_data(speech_to_text.latest_audio_chunk,
+                                                                                 engine="google")
+            except Exception as e:
+                logger.error(f"Error transcribing audio with Google Cloud: {e}")
                 continue
 
-            if character.state.is_conversing and character.name not in transcribed_message.lower():
-                continue
+            logger.info(f"Google Cloud transcription: {transcribed_message}")
+
+            # Currently only requiring character name to be detected with Sphinx,
+            # if character.name not in transcribed_message.lower():
+            #     continue
+            # logger.info(f"Character name {character.name} detected with Google Cloud transcription")
+
+            if character.state.is_wandering:
+                logger.info("Starting new conversation because character name was detected with Google Cloud transcription.")
+                character.start_conversation()
+            else:
+                end_keywords = ["bye", "quit", "exit"]
+                #transcribed_message_words = transcribed_message.split()
+                if character.state.is_conversing and any(end_keyword in transcribed_message for end_keyword in end_keywords):
+                    logger.info(f"Ending conversation due to goodbye.")
+                    character.end_conversation()
+                    continue
+
+                stop_action_keywords = ["stop", "wait", "hold", "pause"]
+                if character.state.is_performing_action and any(stop_action_keyword in transcribed_message for stop_action_keyword in stop_action_keywords):
+                    logger.info(f"Stopping action due to stop keyword.")
+                    character.actions.stop_flag = True
+                    logger.info("Set stop flag to True")
+                    character.actions.unset_stop_flag_after_action_finishes()
+                    logger.info("Action finished")
+                    character.set_state(character.previous_state)
+                    continue
 
             if not character.state.is_conversing:
                 continue
+
+            # Character nods once to indicate it heard the message
+            character.actions.enqueue_action(ActionEnum.NOD_HEAD)
 
             openai_response = openai_api_client.send_prompt(
                 prompt=transcribed_message,
@@ -118,6 +125,7 @@ if __name__ == "__main__":
             logger.info(f"OpenAI response: {openai_response}")
 
             conversation_end_needed = False
+            transition_to_performing_action_state_needed = False
 
             if openai_response.startswith("TYPE_NORMAL"):
                 # Remove the TYPE_NORMAL prefix
@@ -129,11 +137,7 @@ if __name__ == "__main__":
                 logger.info(f"Ending conversation due to TYPE_ENDING: {character.conversation_uuid}")
             elif openai_response.startswith("TYPE_CONFUSED"):
                 openai_response = openai_response.replace("TYPE_CONFUSED", "")
-                ### Now that I'm requiring the character name to be in a prompt, this is no longer needed
-                # character.consecutive_confused_responses += 1
-                # if character.consecutive_confused_responses > 3:
-                #     conversation_end_needed = True
-                #     logger.info(f"Ending conversation due to consecutive TYPE_CONFUSED responses: {character.conversation_uuid}")
+                character.consecutive_confused_responses += 1
             elif openai_response.startswith("TYPE_YES"):
                 openai_response = openai_response.replace("TYPE_YES", "")
                 character.actions.enqueue_action(ActionEnum.NOD_HEAD_TWICE)
@@ -141,6 +145,10 @@ if __name__ == "__main__":
                 openai_response = openai_response.replace("TYPE_NO", "")
                 character.actions.enqueue_action(ActionEnum.SHAKE_HEAD)
             elif openai_response.startswith("TYPE_CMD"):
+                # Sometimes the AI will identify a command, but claim it cannot perform it.
+                # In this case, just don't say anything.
+                if "sorry" in transcribed_message.lower():
+                    transcribed_message = ""
                 if not character.actions.window_is_focused:
                     openai_response = "Sorry, I cannot move right now."
                 elif openai_response.startswith("TYPE_CMD_TURN"):
@@ -150,21 +158,28 @@ if __name__ == "__main__":
                         character.actions.enqueue_action(ActionEnum.TURN_LEFT_UNTIL_STOP_FLAG)
                     else:
                         character.actions.enqueue_action(ActionEnum.TURN_RIGHT_UNTIL_STOP_FLAG)
-                    character.set_state(PerformingActionState())
+                    transition_to_performing_action_state_needed = True
                 elif openai_response.startswith("TYPE_CMD_FORWARD"):
                     openai_response = openai_response.replace("TYPE_CMD_FORWARD", "")
                     character.actions.enqueue_action(ActionEnum.MOVE_FORWARD_UNTIL_STOP_FLAG)
-                    character.set_state(PerformingActionState())
+                    transition_to_performing_action_state_needed = True
                 elif openai_response.startswith("TYPE_CMD_BACK"):
                     openai_response = openai_response.replace("TYPE_CMD_BACK", "")
                     character.actions.enqueue_action(ActionEnum.MOVE_BACK_UNTIL_STOP_FLAG)
-                    character.set_state(PerformingActionState())
+                    transition_to_performing_action_state_needed = True
 
             character.state.speak(text_to_speech=text_to_speech, text=openai_response, speaking_device=speaking_device)
 
             if conversation_end_needed:
                 logger.info(f"Ending conversation: {character.conversation_uuid}")
                 character.end_conversation()
+            if transition_to_performing_action_state_needed:
+                character.set_state(PerformingActionState())
+
+            # Clear the transcription queue right after we have processed a message
+            # This means any messages that come in while we are processing a message will be ignored
+            # But this also means we won't have to worry about processing now-irrelevant messages
+            speech_to_text.transcription.clear()
 
         character.update()
 

@@ -47,6 +47,7 @@ class WanderingState(State):
 
 
 class ConversingState(State):
+    CONVERSATION_MAX_INACTIVITY_SECONDS = 60
     def __init__(self):
         self.latest_speech_start_epoch = 0
         self.is_speaking = False
@@ -60,14 +61,17 @@ class ConversingState(State):
         self.latest_speech_start_epoch = time.time()
         self.is_speaking = True
         text_to_speech.speak_on_device(text, speaking_device)
+        logger.info(f"Speaking: {text}")
         self.is_speaking = False
+
+    def is_time_to_end_conversation(self):
+        time_since_last_speech = time.time() - self.latest_speech_start_epoch
+        return self.latest_speech_start_epoch != 0 and time_since_last_speech >= self.CONVERSATION_MAX_INACTIVITY_SECONDS
 
     # define other behaviors related to Conversing state
     def execute(self):
         #logger.info("Engaging in conversation...")
         return
-
-
 
 
 class PerformingActionState(State):
@@ -98,7 +102,7 @@ class Character:
         self.listening_device = listening_device
         self.text_to_speech = text_to_speech
         self.speech_to_text = speech_to_text
-        self.name = name
+        self.name = name.lower()
 
         self.state = None
         self.previous_state = None
@@ -112,19 +116,12 @@ class Character:
     def start_conversation(self):
         self.conversation_uuid = str(uuid4())
         self.set_state(ConversingState())
-        # We want to transcribe the latest audio chunk using Google's speech-to-text engine
-        # because it's more accurate than Sphinx.
-        # Set the speech-to-text engine to Google
-        self.speech_to_text.set_engine("google")
         self.actions.enqueue_action(ActionEnum.NOD_HEAD)
 
     def end_conversation(self):
         self.conversation_uuid = None
         self.consecutive_confused_responses = 0
         self.text_to_speech.speak_on_device("Goodbye", self.speaking_device)
-        # Revert to less accurate, but local and free speech recognition engine.
-        # Sphinx will utilize speech_to_text.keyword_entries, which is set to listen for the character name.
-        self.speech_to_text.set_engine("sphinx")
         self.set_state(WanderingState())
 
     def set_state(self, state: State):
@@ -139,6 +136,10 @@ class Character:
             logger.info(f"Character '{self.name}' is wandering and it's time to act.")
             self.actions.enqueue_random_action()
             self.state.update_latest_action_epoch()
+
+        if self.state.is_conversing and self.state.is_time_to_end_conversation():
+            logger.info(f"Character '{self.name}' is conversing and it's time to end the conversation.")
+            self.end_conversation()
 
         if self.state.is_conversing:
             pass
